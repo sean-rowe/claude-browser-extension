@@ -1,0 +1,40 @@
+{
+  "name": "claude-artifacts-downloader",
+  "version": "1.0.0",
+  "description": "A Chrome extension for downloading and editing Claude AI artifacts",
+  "type": "module",
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "tsc && vite build",
+    "lint": "eslint 'src/**/*.{ts,tsx}'",
+    "lint:fix": "eslint 'src/**/*.{ts,tsx}' --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "chrome-extension",
+    "monaco-editor",
+    "claude",
+    "ai",
+    "artifacts",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.0.0-beta.32",
+    "@types/chrome": "^0.0.307",
+    "@types/node": "^22.13.8",
+    "@typescript-eslint/eslint-plugin": "^8.25.0",
+    "@typescript-eslint/parser": "^8.25.0",
+    "eslint": "^9.21.0",
+    "eslint-plugin-import": "^2.31.0",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.0",
+    "vitest": "^3.0.7"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1"
+  }
+}

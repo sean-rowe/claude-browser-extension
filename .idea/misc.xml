@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="NxDevToolsSettings">
+    <node-interpreter value="/usr/local/bin/node" />
+    <nx-package value="" />
+    <nx.json value="" />
+  </component>
+</project>
