@@ -1,9 +1,8 @@
 import { LoggerService } from '../shared/services/loggerService';
-import { UiInjector } from './ui/UiInjector';
+import { UiInjector } from './ui/uiInjector';
 import { BannerService } from './ui/bannerService';
 import { MessageService } from './events/messageService';
 import { StorageService } from '../shared/services/storageService';
-import { CompilerService } from './editor/compilerService';
 
 /**
  * Main entry point for the content script
@@ -14,7 +13,6 @@ class ContentScript {
     private readonly bannerService = BannerService.getInstance();
     private readonly messageService = MessageService.getInstance();
     private readonly storageService = StorageService.getInstance();
-    private readonly compilerService = CompilerService.getInstance();
 
     constructor() {
         this.init().catch(error => {
@@ -45,7 +43,7 @@ class ContentScript {
 
             // Notification on successful initialization
             if (settings.uiSettings.showNotifications) {
-                this.bannerService.showSuccess('Claude Artifacts extension initialized', 2000);
+                this.bannerService.showSuccess('Claude Artifacts helper initialized', 2000);
             }
 
             this.logger.info('ContentScript: Initialization complete');
@@ -60,7 +58,7 @@ class ContentScript {
     private registerMessageHandlers(): void {
         // Handler for showing settings UI
         this.messageService.registerHandler('showSettings', async () => {
-            // Implemented in settings UI module
+            this.bannerService.showInfo('Settings panel coming soon');
             return true;
         });
 

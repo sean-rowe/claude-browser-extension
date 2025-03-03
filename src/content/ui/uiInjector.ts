@@ -1,20 +1,18 @@
-import { EditorManager } from '../editor/editorManager';
-import { MessageService } from '../events/messageService';
-import { BannerService } from './bannerService';
-import { StorageService } from '../../shared/services/storageService';
-import { LoggerService } from '../../shared/services/loggerService';
-import { ArtifactSettings, UIElements } from '../../shared/models/settings';
+import {MessageService} from '../events/messageService';
+import {BannerService} from './bannerService';
+import {LoggerService} from '../../shared/services/loggerService';
+import {ArtifactExtractor} from '../../shared/utils/artifactExtractor';
+import {EditorManager} from '../editor/editorManager';
 
 /**
- * UiInjector is responsible for injecting UI elements into the Claude interface
- * and managing their lifecycle and event handling.
+ * UI Injector for Claude interface
+ * Responsible for injecting UI elements into the Claude interface
  */
 export class UiInjector {
     private static instance: UiInjector;
     private readonly logger = LoggerService.getInstance();
     private readonly messageService = MessageService.getInstance();
     private readonly bannerService = BannerService.getInstance();
-    private readonly storageService = StorageService.getInstance();
     private readonly editorManager = EditorManager.getInstance();
 
     private observer: MutationObserver | null = null;
@@ -22,7 +20,6 @@ export class UiInjector {
     private settingsButton: HTMLButtonElement | null = null;
     private headerContainer: HTMLElement | null = null;
     private isInitialized = false;
-    private settings: ArtifactSettings | null = null;
 
     // UI Element selectors
     private readonly SELECTORS = {
@@ -46,7 +43,7 @@ export class UiInjector {
     }
 
     /**
-     * Initialize the UI injector by loading settings and starting the observer
+     * Initialize the UI injector
      */
     public async init(): Promise<void> {
         if (this.isInitialized) {
@@ -54,7 +51,6 @@ export class UiInjector {
         }
 
         try {
-            this.settings = await this.storageService.getSettings();
             this.startObserver();
             this.injectStylesheet();
             this.isInitialized = true;
@@ -280,7 +276,7 @@ export class UiInjector {
     }
 
     /**
-     * Add controls to an artifact container (edit, run buttons)
+     * Add controls to an artifact container (edit, copy, run buttons)
      */
     private addArtifactControls(container: HTMLElement): void {
         // Find the artifact title element to place our controls next to it
@@ -301,6 +297,14 @@ export class UiInjector {
         // Create edit button
         const editButton = this.createEditButton();
         controlsContainer.appendChild(editButton);
+
+        // Create copy button
+        const copyButton = this.createCopyButton();
+        controlsContainer.appendChild(copyButton);
+
+        // Create download button
+        const downloadButton = this.createArtifactDownloadButton();
+        controlsContainer.appendChild(downloadButton);
 
         // Create run button for code artifacts
         const isCodeArtifact = container.classList.contains('code-artifact') ||
@@ -369,6 +373,95 @@ export class UiInjector {
     }
 
     /**
+     * Create a copy button for an artifact
+     */
+    private createCopyButton(): HTMLButtonElement {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'artifact-copy-button';
+        button.title = 'Copy this artifact';
+        button.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span>Copy</span>
+    `;
+
+        // Add styling
+        Object.assign(button.style, {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            border: '1px solid #e2e8f0',
+            backgroundColor: '#f8fafc',
+            color: '#334155',
+            cursor: 'pointer',
+            fontSize: '12px',
+            fontWeight: '500'
+        });
+
+        // Add event listener
+        button.addEventListener('click', (event) => {
+            const artifactContainer = (event.target as HTMLElement)
+                .closest(this.SELECTORS.ARTIFACT_CONTAINER) as HTMLElement;
+
+            if (artifactContainer) {
+                this.handleArtifactCopy(artifactContainer, button);
+            }
+        });
+
+        return button;
+    }
+
+    /**
+     * Create a download button for an artifact
+     */
+    private createArtifactDownloadButton(): HTMLButtonElement {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'artifact-download-button';
+        button.title = 'Download this artifact';
+        button.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </svg>
+      <span>Download</span>
+    `;
+
+        // Add styling
+        Object.assign(button.style, {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            border: '1px solid #e2e8f0',
+            backgroundColor: '#f8fafc',
+            color: '#334155',
+            cursor: 'pointer',
+            fontSize: '12px',
+            fontWeight: '500'
+        });
+
+        // Add event listener
+        button.addEventListener('click', (event) => {
+            const artifactContainer = (event.target as HTMLElement)
+                .closest(this.SELECTORS.ARTIFACT_CONTAINER) as HTMLElement;
+
+            if (artifactContainer) {
+                this.handleArtifactDownload(artifactContainer);
+            }
+        });
+
+        return button;
+    }
+
+    /**
      * Create a run button for code artifacts
      */
     private createRunButton(): HTMLButtonElement {
@@ -420,7 +513,7 @@ export class UiInjector {
         const title = titleElement?.textContent?.trim() || 'Untitled Artifact';
 
         // Determine artifact type
-        let artifactType = 'text';
+        let artifactType = 'markdown';
         if (container.classList.contains('code-artifact') || container.querySelector('pre code')) {
             artifactType = 'code';
         } else if (container.querySelector('svg')) {
@@ -467,17 +560,35 @@ export class UiInjector {
         <span>Processing...</span>
       `;
 
+            // Extract artifacts from the DOM
+            const artifacts = ArtifactExtractor.extractArtifactsFromDOM();
+
+            if (artifacts.length === 0) {
+                this.bannerService.showInfo('No artifacts found in this conversation');
+                return;
+            }
+
+            // Get settings
+            const settingsResponse = await this.messageService.sendMessage({
+                action: 'getSettings'
+            });
+
+            const settings = settingsResponse.success
+                ? settingsResponse.settings
+                : null;
+
             // Request artifact download from background script
             const result = await this.messageService.sendMessage({
                 action: 'downloadArtifacts',
+                artifacts: artifacts.map(a => a.toObject()),
                 options: {
-                    stitchArtifacts: this.settings?.stitchArtifacts || false,
-                    flatStructure: this.settings?.flatFileStructure || false
+                    stitchArtifacts: settings?.stitchArtifacts || false,
+                    flatStructure: settings?.flatFileStructure || false
                 }
             });
 
             if (result.success) {
-                this.bannerService.showSuccess('Artifacts downloaded successfully');
+                this.bannerService.showSuccess(`${result.count} artifacts downloaded successfully`);
             } else {
                 this.bannerService.showError(result.error || 'Failed to download artifacts');
             }
@@ -489,7 +600,7 @@ export class UiInjector {
             if (this.downloadButton) {
                 this.downloadButton.removeAttribute('disabled');
                 this.downloadButton.classList.remove('loading');
-                this.downloadButton.innerHTML = originalText || `
+                this.downloadButton.innerHTML = `
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
@@ -505,10 +616,9 @@ export class UiInjector {
      * Handle settings button click
      */
     private handleSettingsClick(): void {
-        // Send message to show settings
-        this.messageService.sendMessage({
-            action: 'showSettings'
-        });
+        // Send message to show settings panel
+        // This will be handled by a settings UI component
+        this.bannerService.showInfo('Settings functionality coming soon');
     }
 
     /**
@@ -547,145 +657,115 @@ export class UiInjector {
     }
 
     /**
-     * Handle artifact run button click
+     * Handle artifact copy button click
      */
-    private async handleArtifactRun(container: HTMLElement): Promise<void> {
+    private handleArtifactCopy(container: HTMLElement, button: HTMLButtonElement): void {
         try {
-            const metadata = this.extractArtifactMetadata(container);
-
-            if (!metadata || metadata.type !== 'code') {
-                this.bannerService.showError('Can only run code artifacts');
-                return;
-            }
-
-            // Get the code content
-            let code: string;
+            // Get content to copy
+            let content = '';
 
             if (container.classList.contains('editing-mode')) {
-                // Get code from Monaco editor
-                code = this.editorManager.getEditorContent(container) || '';
+                // Get from Monaco editor
+                content = this.editorManager.getEditorContent(container) || '';
             } else {
-                // Get code from pre element
+                // Get from DOM
                 const codeElement = container.querySelector('pre code');
-                code = codeElement?.textContent || '';
+                if (codeElement) {
+                    content = codeElement.textContent || '';
+                } else {
+                    const preElement = container.querySelector('pre');
+                    if (preElement) {
+                        content = preElement.textContent || '';
+                    } else {
+                        content = container.textContent || '';
+                    }
+                }
             }
 
-            if (!code.trim()) {
-                this.bannerService.showError('No code to run');
-                return;
+            // Copy to clipboard
+            navigator.clipboard.writeText(content);
+
+            // Update button temporarily
+            const originalHTML = button.innerHTML;
+            button.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        <span>Copied!</span>
+      `;
+
+            // Reset button after delay
+            setTimeout(() => {
+                button.innerHTML = originalHTML;
+            }, 2000);
+
+            // Show notification
+            this.bannerService.showSuccess('Copied to clipboard');
+        } catch (error) {
+            this.logger.error('UiInjector: Copy error', error);
+            this.bannerService.showError('Failed to copy artifact');
+        }
+    }
+
+    /**
+     * Handle artifact download button click
+     */
+    private async handleArtifactDownload(container: HTMLElement): Promise<void> {
+        try {
+            // Extract the artifact data
+            const artifactMetadata = JSON.parse(container.dataset.artifactMetadata || '{}');
+
+            // Get content
+            let content = '';
+            if (container.classList.contains('editing-mode')) {
+                content = this.editorManager.getEditorContent(container) || '';
+            } else {
+                // Get from DOM based on type
+                if (artifactMetadata.type === 'svg') {
+                    const svg = container.querySelector('svg');
+                    content = svg?.outerHTML || '';
+                } else if (artifactMetadata.type === 'code') {
+                    const code = container.querySelector('pre code');
+                    content = code?.textContent || '';
+                } else {
+                    // For other types, get text content
+                    content = container.textContent || '';
+                }
             }
 
-            // Show compiling message
-            this.bannerService.showInfo('Compiling code...');
+            // Create artifact object
+            const artifact = {
+                id: `artifact-${Date.now()}`,
+                title: artifactMetadata.title || 'Untitled',
+                type: artifactMetadata.type || 'unknown',
+                content,
+                language: artifactMetadata.language,
+                timestamp: new Date()
+            };
 
-            // Send code to compiler service
+            // Send to background script for download
             const result = await this.messageService.sendMessage({
-                action: 'compileAndRun',
-                code,
-                language: metadata.language || 'javascript'
+                action: 'downloadSingleArtifact',
+                artifact
             });
 
             if (result.success) {
-                // Create or update output container
-                this.displayCompilationResult(container, result.data);
+                this.bannerService.showSuccess(`Downloaded ${result.filename}`);
             } else {
-                this.bannerService.showError(result.error || 'Failed to run code');
+                this.bannerService.showError(result.error || 'Failed to download artifact');
             }
         } catch (error) {
-            this.logger.error('UiInjector: Run error', error);
-            this.bannerService.showError('Failed to run code');
+            this.logger.error('UiInjector: Download error', error);
+            this.bannerService.showError('Failed to download artifact');
         }
     }
 
     /**
-     * Display compilation results
+     * Handle artifact run button click
      */
-    private displayCompilationResult(container: HTMLElement, result: any): void {
-        // Check if output container already exists
-        let outputContainer = container.querySelector('.compilation-output');
-
-        if (!outputContainer) {
-            // Create new output container
-            outputContainer = document.createElement('div');
-            outputContainer.className = 'compilation-output';
-            Object.assign(outputContainer.style, {
-                marginTop: '12px',
-                padding: '12px',
-                backgroundColor: '#f8fafc',
-                borderRadius: '4px',
-                border: '1px solid #e2e8f0',
-                maxHeight: '300px',
-                overflow: 'auto',
-                fontSize: '14px',
-                fontFamily: 'monospace'
-            });
-
-            container.appendChild(outputContainer);
-        }
-
-        // Clear previous content
-        outputContainer.innerHTML = '';
-
-        // Add header
-        const header = document.createElement('div');
-        header.style.fontWeight = 'bold';
-        header.style.marginBottom = '8px';
-        header.style.display = 'flex';
-        header.style.justifyContent = 'space-between';
-        header.innerHTML = `
-      <span>Execution Results</span>
-      <span class="close-output" style="cursor:pointer">×</span>
-    `;
-        outputContainer.appendChild(header);
-
-        // Add close button handler
-        header.querySelector('.close-output')?.addEventListener('click', () => {
-            outputContainer?.remove();
-        });
-
-        // Add content based on result type
-        if (result.error) {
-            const errorDiv = document.createElement('div');
-            errorDiv.style.color = '#ef4444';
-            errorDiv.textContent = result.error;
-            outputContainer.appendChild(errorDiv);
-        } else {
-            // Create content based on result type
-            if (typeof result.output === 'string') {
-                const outputPre = document.createElement('pre');
-                outputPre.style.margin = '0';
-                outputPre.style.whiteSpace = 'pre-wrap';
-                outputPre.textContent = result.output;
-                outputContainer.appendChild(outputPre);
-            } else {
-                try {
-                    const outputPre = document.createElement('pre');
-                    outputPre.style.margin = '0';
-                    outputPre.style.whiteSpace = 'pre-wrap';
-                    outputPre.textContent = JSON.stringify(result.output, null, 2);
-                    outputContainer.appendChild(outputPre);
-                } catch (e) {
-                    const outputDiv = document.createElement('div');
-                    outputDiv.textContent = 'Complex output (cannot display)';
-                    outputContainer.appendChild(outputDiv);
-                }
-            }
-        }
-    }
-
-    /**
-     * Extract artifact metadata from data attribute
-     */
-    private extractArtifactMetadata(container: HTMLElement): any {
-        try {
-            const metadataStr = container.dataset.artifactMetadata;
-            if (metadataStr) {
-                return JSON.parse(metadataStr);
-            }
-        } catch (error) {
-            this.logger.error('UiInjector: Failed to parse artifact metadata', error);
-        }
-        return null;
+    private async handleArtifactRun(container: HTMLElement): Promise<void> {
+        // This will be implemented when we add the compiler service
+        this.bannerService.showInfo('Run functionality coming soon');
     }
 
     /**
@@ -727,6 +807,15 @@ export class UiInjector {
       .compilation-output::-webkit-scrollbar-thumb {
         background-color: #cbd5e1;
         border-radius: 4px;
+      }
+      
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      
+      .animate-spin {
+        animation: spin 1s linear infinite;
       }
       
       @keyframes fadeIn {

@@ -1,4 +1,4 @@
-import { LoggerService } from '../../shared/services/loggerService';
+import {LoggerService} from '../../shared/services/loggerService';
 
 /**
  * Service for showing notification banners in the UI

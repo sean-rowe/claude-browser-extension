@@ -1,4 +1,4 @@
-import { MonacoEditorService } from './monacoEditorService';
+import { MonacoService } from './monacoService';
 import { LoggerService } from '../../shared/services/loggerService';
 import { BannerService } from '../ui/bannerService';
 import { StorageService } from '../../shared/services/storageService';
@@ -12,7 +12,7 @@ export class EditorManager {
     private readonly logger = LoggerService.getInstance();
     private readonly bannerService = BannerService.getInstance();
     private readonly storageService = StorageService.getInstance();
-    private readonly monacoService = MonacoEditorService.getInstance();
+    private readonly monacoService = MonacoService.getInstance();
 
     // Map of artifact container elements to their editor instances
     private editorMap = new Map<HTMLElement, monaco.editor.IStandaloneCodeEditor>();
@@ -37,7 +37,7 @@ export class EditorManager {
      */
     private async loadSettings(): Promise<void> {
         try {
-            this.settings = await this.storageService.getSettings();
+            this.settings = (await this.storageService.getSettings()).toObject();
         } catch (error) {
             this.logger.error('EditorManager: Failed to load settings', error);
         }
@@ -59,6 +59,9 @@ export class EditorManager {
         }
 
         try {
+            // Reload settings to ensure we have the latest
+            await this.loadSettings();
+
             // Extract artifact metadata
             const metadata = this.extractArtifactMetadata(container);
 

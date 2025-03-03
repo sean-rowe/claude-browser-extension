@@ -1,4 +1,4 @@
-import { StorageService } from '@/background/storageService';
+import {StorageService} from '@/background/storageService';
 import {LoggerService} from '@/shared/services/loggerService';
 
 export class SettingsManager {

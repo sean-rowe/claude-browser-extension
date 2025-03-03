@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Claude Artifacts Helper",
+  "version": "1.0.0",
+  "description": "Enhances Claude AI with artifact downloading, editing and execution",
+  "permissions": [
+    "storage",
+    "downloads"
+  ],
+  "host_permissions": [
+    "https://claude.ai/*",
+    "https://*.anthropic.com/*"
+  ],
+  "background": {
+    "service_worker": "dist/background/index.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://claude.ai/*", "https://*.anthropic.com/*"],
+      "js": ["dist/content/index.js"],
+      "css": ["dist/content/styles/styles.css"]
+    }
+  ],
+  "action": {
+    "default_icon": {
+      "16": "assets/icon16.png",
+      "32": "assets/icon32.png",
+      "48": "assets/icon48.png",
+      "128": "assets/icon128.png"
+    },
+    "default_title": "Claude Artifacts Helper"
+  },
+  "icons": {
+    "16": "assets/icon16.png",
+    "32": "assets/icon32.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  }
+}

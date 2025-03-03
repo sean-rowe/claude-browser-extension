@@ -2,6 +2,7 @@ import {LoggerService} from '../../shared/services/loggerService';
 import {ArtifactService} from './artifactService';
 import {DownloadService} from './downloadService';
 import {ApiService} from './apiService';
+import {ArtifactState} from '../../shared/models/artifact';
 
 /**
  * Router for handling messages from content scripts
@@ -58,12 +59,20 @@ export class MessageRouter {
                 this.handleDownloadArtifacts(message, sendResponse);
                 return true; // Keep connection open for async response
 
-            case 'remoteCompile':
-                this.handleRemoteCompile(message, sendResponse);
+            case 'continueConversation':
+                this.handleContinueConversation(message, sendResponse);
                 return true; // Keep connection open for async response
 
-            case 'apiRequest':
-                this.handleApiRequest(message, sendResponse);
+            case 'getSettings':
+                this.handleGetSettings(sendResponse);
+                return true; // Keep connection open for async response
+
+            case 'saveSettings':
+                this.handleSaveSettings(message, sendResponse);
+                return true; // Keep connection open for async response
+
+            case 'downloadSingleArtifact':
+                this.handleDownloadSingleArtifact(message, sendResponse);
                 return true; // Keep connection open for async response
 
             default:
@@ -84,9 +93,12 @@ export class MessageRouter {
                 return;
             }
 
+            // Convert plain objects to ArtifactState instances
+            const artifactStates = artifacts.map((a: any) => new ArtifactState(a));
+
             // Process artifacts
             const files = await this.artifactService.processArtifacts(
-                artifacts,
+                artifactStates,
                 options?.stitchArtifacts || false,
                 options?.flatStructure || false
             );
@@ -109,26 +121,32 @@ export class MessageRouter {
     }
 
     /**
-     * Handle remote code compilation request
+     * Handle download single artifact request
      */
-    private async handleRemoteCompile(message: any, sendResponse: (response?: any) => void): Promise<void> {
+    private async handleDownloadSingleArtifact(message: any, sendResponse: (response?: any) => void): Promise<void> {
         try {
-            const { code, language } = message;
+            const { artifact } = message;
 
-            if (!code) {
-                sendResponse({ success: false, error: 'No code provided' });
+            if (!artifact) {
+                sendResponse({ success: false, error: 'No artifact provided' });
                 return;
             }
 
-            // Use API service to compile code
-            const result = await this.apiService.compileCode(code, language);
+            // Convert to ArtifactState
+            const artifactState = new ArtifactState(artifact);
+
+            // Process artifact to get file
+            const [file] = await this.artifactService.processArtifacts([artifactState]);
+
+            // Download file
+            const filename = await this.downloadService.downloadSingleArtifact(file);
 
             sendResponse({
                 success: true,
-                data: result
+                filename
             });
         } catch (error) {
-            this.logger.error('MessageRouter: Error handling remote compile', error);
+            this.logger.error('MessageRouter: Error handling download single artifact', error);
             sendResponse({
                 success: false,
                 error: error instanceof Error ? error.message : 'Unknown error'
@@ -137,26 +155,73 @@ export class MessageRouter {
     }
 
     /**
-     * Handle Claude API request
+     * Handle continue conversation request
      */
-    private async handleApiRequest(message: any, sendResponse: (response?: any) => void): Promise<void> {
+    private async handleContinueConversation(message: any, sendResponse: (response?: any) => void): Promise<void> {
         try {
-            const { prompt, options } = message;
+            const { conversationHistory, prompt } = message;
 
-            if (!prompt) {
-                sendResponse({ success: false, error: 'No prompt provided' });
+            if (!conversationHistory || !prompt) {
+                sendResponse({ success: false, error: 'Missing conversation history or prompt' });
                 return;
             }
 
-            // Use API service to make Claude API request
-            const result = await this.apiService.sendPrompt(prompt, options);
+            // Call API service to continue conversation
+            const result = await this.apiService.continueConversation(conversationHistory, prompt);
 
             sendResponse({
                 success: true,
                 data: result
             });
         } catch (error) {
-            this.logger.error('MessageRouter: Error handling API request', error);
+            this.logger.error('MessageRouter: Error handling continue conversation', error);
+            sendResponse({
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+        }
+    }
+
+    /**
+     * Handle get settings request
+     */
+    private async handleGetSettings(sendResponse: (response?: any) => void): Promise<void> {
+        try {
+            const settingsState = await this.artifactService.storageService.getSettings();
+
+            sendResponse({
+                success: true,
+                settings: settingsState.toObject()
+            });
+        } catch (error) {
+            this.logger.error('MessageRouter: Error handling get settings', error);
+            sendResponse({
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+        }
+    }
+
+    /**
+     * Handle save settings request
+     */
+    private async handleSaveSettings(message: any, sendResponse: (response?: any) => void): Promise<void> {
+        try {
+            const { settings } = message;
+
+            if (!settings) {
+                sendResponse({ success: false, error: 'No settings provided' });
+                return;
+            }
+
+            // Save settings
+            await this.artifactService.storageService.saveSettings(settings);
+
+            sendResponse({
+                success: true
+            });
+        } catch (error) {
+            this.logger.error('MessageRouter: Error handling save settings', error);
             sendResponse({
                 success: false,
                 error: error instanceof Error ? error.message : 'Unknown error'

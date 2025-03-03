@@ -1,4 +1,4 @@
-import { LoggerService } from '../../shared/services/loggerService';
+import {LoggerService} from '../../shared/services/loggerService';
 
 /**
  * Interface for all messages sent between content and background scripts

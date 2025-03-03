@@ -1,10 +1,10 @@
-import {Artifact, ArtifactFile} from '../../shared/models/artifact';
+import {ArtifactFile, ArtifactState} from '../../shared/models/artifact';
 import {LoggerService} from '../../shared/services/loggerService';
 import {StorageService} from '../../shared/services/storageService';
 import {FilenameHelper} from '../../shared/utils/filenameHelper';
 
 /**
- * Service for managing artifacts
+ * Service for processing and managing artifacts
  */
 export class ArtifactService {
     private static instance: ArtifactService;
@@ -36,18 +36,19 @@ export class ArtifactService {
      * Process artifacts for download
      */
     public async processArtifacts(
-        artifacts: Artifact[],
-        stitchArtifacts: boolean,
-        flatStructure: boolean
+        artifacts: ArtifactState[],
+        stitchArtifacts: boolean = false,
+        flatStructure: boolean = false
     ): Promise<ArtifactFile[]> {
         try {
             // Get settings
             const settings = await this.storageService.getSettings();
 
             // Stitch artifacts if requested
+            // This would combine multiple related artifacts into one (e.g., code blocks across messages)
             let processedArtifacts = artifacts;
             if (stitchArtifacts) {
-                // Implementation in artifactExtractor.ts
+                // Implementation in shared/utils/artifactExtractor.ts
                 // processedArtifacts = ArtifactExtractor.stitchArtifacts(artifacts);
             }
 
@@ -66,7 +67,7 @@ export class ArtifactService {
                 // Generate path for structured storage
                 let path = '';
                 if (!flatStructure) {
-                    path = FilenameHelper.getFolderPath(artifact, 'Claude Conversation');
+                    path = FilenameHelper.getFolderPath(artifact, 'Claude Artifacts');
                 }
 
                 // Create file entry
@@ -86,9 +87,9 @@ export class ArtifactService {
     }
 
     /**
-     * Store an artifact for potential stitching later
+     * Store an artifact for later use
      */
-    public async storeArtifact(artifact: Artifact): Promise<void> {
+    public async storeArtifact(artifact: ArtifactState): Promise<void> {
         try {
             // Generate a storage key based on title and type
             const key = `artifact-${artifact.title}-${artifact.type}`;
@@ -102,12 +103,21 @@ export class ArtifactService {
     }
 
     /**
-     * Retrieve stored artifacts
+     * Retrieve all stored artifacts
      */
-    public async getStoredArtifacts(): Promise<Record<string, Artifact>> {
+    public async getStoredArtifacts(): Promise<Record<string, ArtifactState>> {
         try {
-            // Implementation would depend on how artifacts are stored
-            return {};
+            const allData = await this.storageService.getAll();
+            const artifacts: Record<string, ArtifactState> = {};
+
+            // Filter out only artifact entries
+            Object.entries(allData).forEach(([key, value]) => {
+                if (key.startsWith('artifact-') && value) {
+                    artifacts[key] = new ArtifactState(value);
+                }
+            });
+
+            return artifacts;
         } catch (error) {
             this.logger.error('ArtifactService: Error retrieving stored artifacts', error);
             throw error;

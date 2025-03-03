@@ -1,8 +1,8 @@
-import {LoggerService} from '../../shared/services/loggerService';
-import {StorageService} from '../../shared/services/storageService';
+import {LoggerService} from '@/shared/services/loggerService.ts';
+import {StorageService} from '@/shared/services/storageService.ts';
 
 /**
- * Service for interacting with external APIs
+ * Service for interacting with the Claude API
  */
 export class ApiService {
     private static instance: ApiService;
@@ -69,7 +69,8 @@ export class ApiService {
                             role: 'user',
                             content: prompt
                         }
-                    ]
+                    ],
+                    ...options
                 })
             };
 
@@ -90,63 +91,60 @@ export class ApiService {
     }
 
     /**
-     * Compile code using remote service
+     * Continue a conversation with the Claude API
      */
-    public async compileCode(code: string, language: string): Promise<any> {
+    public async continueConversation(conversationHistory: any[], prompt: string): Promise<any> {
         try {
             // Load settings
             const settings = await this.storageService.getSettings();
-            const apiKey = settings.compilerSettings.compilationApiKey;
+            const apiKey = settings.apiSettings.apiKey;
 
-            if (!settings.compilerSettings.enableCompilation) {
-                throw new Error('Code compilation is disabled in settings');
+            if (!apiKey) {
+                throw new Error('API key not configured');
             }
 
-            if (!settings.compilerSettings.useRemoteCompilation) {
-                throw new Error('Remote compilation is disabled in settings');
+            if (!settings.apiSettings.enableApiContinuation) {
+                throw new Error('API continuation is disabled in settings');
             }
 
-            if (!settings.compilerSettings.supportedLanguages.includes(language)) {
-                throw new Error(`Language not supported: ${language}`);
-            }
+            // Prepare messages from conversation history
+            const messages = [
+                ...conversationHistory,
+                {
+                    role: 'user',
+                    content: prompt
+                }
+            ];
 
             // Prepare request options
             const requestOptions = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01'
                 },
                 body: JSON.stringify({
-                    language,
-                    code,
-                    timeout: settings.compilerSettings.executionTimeoutMs
+                    model: settings.apiSettings.modelName,
+                    max_tokens: settings.apiSettings.maxTokens,
+                    temperature: settings.apiSettings.temperature,
+                    messages
                 })
             };
 
             // Make API request
-            const response = await fetch(settings.compilerSettings.remoteCompilationEndpoint, requestOptions);
+            const response = await fetch(settings.apiSettings.apiEndpoint, requestOptions);
 
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`Compilation error (${response.status}): ${errorText}`);
+                throw new Error(`API error (${response.status}): ${errorText}`);
             }
 
             const data = await response.json();
-            return {
-                output: data.output,
-                error: data.error,
-                executionTime: data.executionTime
-            };
+            return data;
         } catch (error) {
-            this.logger.error('ApiService: Error compiling code', error);
-
-            // Return a simulated result for demonstration
-            return {
-                output: 'Remote compilation unavailable. This is a simulated response.',
-                error: error instanceof Error ? error.message : 'Unknown error',
-                executionTime: 0
-            };
+            this.logger.error('ApiService: Error continuing conversation', error);
+            throw error;
         }
     }
 }

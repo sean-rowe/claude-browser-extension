@@ -1,7 +1,7 @@
-import { LoggerService } from '../../shared/services/loggerService';
-import { BannerService } from '../ui/bannerService';
-import { EditorManager } from './editorManager';
-import { CompilerService } from './compilerService';
+import {LoggerService} from '../../shared/services/loggerService';
+import {BannerService} from '../ui/bannerService';
+import {EditorManager} from './editorManager';
+import {CompilerService} from './compilerService';
 
 /**
  * Handler for artifact UI interactions

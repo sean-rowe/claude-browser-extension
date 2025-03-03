@@ -1,5 +1,5 @@
-import { LoggerService } from '../../shared/services/loggerService';
-import { MessageService } from '../events/messageService';
+import {LoggerService} from '../../shared/services/loggerService';
+import {MessageService} from '../events/messageService';
 
 /**
  * Represents a compiler result

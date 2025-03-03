@@ -1,9 +1,9 @@
-import { LoggerService } from '../shared/services/loggerService';
-import { StorageService } from '../shared/services/storageService';
-import { ArtifactService } from './services/artifactService';
-import { DownloadService } from './services/downloadService';
-import { MessageRouter } from './services/messageRouter';
-import { ApiService } from './services/apiService';
+import {LoggerService} from '../shared/services/loggerService';
+import {StorageService} from '../shared/services/storageService';
+import {ArtifactService} from './services/artifactService';
+import {DownloadService} from './services/downloadService';
+import {MessageRouter} from './services/messageRouter';
+import {ApiService} from './services/apiService';
 
 /**
  * Main entry point for the background script
@@ -36,7 +36,7 @@ class Background {
             this.messageRouter.init();
             this.artifactService.init();
             this.downloadService.init();
-            this.apiService.init();
+            await this.apiService.init();
 
             // Set up extension icon click handler
             chrome.action.onClicked.addListener(this.handleActionClick.bind(this));
@@ -57,11 +57,12 @@ class Background {
             // Check if on Claude site
             const url = tab.url || '';
             if (!url.includes('claude.ai') && !url.includes('anthropic.com')) {
+                // If not on Claude, open Claude in a new tab
                 await chrome.tabs.create({ url: 'https://claude.ai/' });
                 return;
             }
 
-            // Send message to show settings
+            // If on Claude, send message to show settings
             chrome.tabs.sendMessage(tab.id, { action: 'showSettings' });
         } catch (error) {
             this.logger.error('Background: Error handling action click', error);

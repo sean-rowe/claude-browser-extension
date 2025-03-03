@@ -1,6 +1,6 @@
-import os
-import datetime
 import argparse
+import datetime
+import os
 import sys
 
 # Define text file extensions to include

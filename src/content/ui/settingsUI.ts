@@ -1,5 +1,4 @@
 import { LoggerService } from '../../shared/services/loggerService';
-import { StorageService } from '../../shared/services/storageService';
 import { MessageService } from '../events/messageService';
 import { BannerService } from './bannerService';
 import { ArtifactSettings, DEFAULT_SETTINGS } from '../../shared/models/settings';
@@ -10,7 +9,6 @@ import { ArtifactSettings, DEFAULT_SETTINGS } from '../../shared/models/settings
 export class SettingsUI {
     private static instance: SettingsUI;
     private readonly logger = LoggerService.getInstance();
-    private readonly storageService = StorageService.getInstance();
     private readonly messageService = MessageService.getInstance();
     private readonly bannerService = BannerService.getInstance();
 
@@ -41,7 +39,12 @@ export class SettingsUI {
 
         try {
             // Load settings
-            this.settings = await this.storageService.getSettings();
+            const response = await this.messageService.sendMessage({ action: 'getSettings' });
+            if (response.success) {
+                this.settings = response.settings;
+            } else {
+                this.settings = DEFAULT_SETTINGS;
+            }
 
             // Create panel if it doesn't exist
             if (!this.settingsPanel) {
@@ -328,7 +331,14 @@ export class SettingsUI {
             };
 
             // Save settings
-            await this.storageService.saveSettings(updatedSettings);
+            const response = await this.messageService.sendMessage({
+                action: 'saveSettings',
+                settings: updatedSettings
+            });
+
+            if (!response.success) {
+                throw new Error(response.error || 'Failed to save settings');
+            }
 
             // Show success message
             this.bannerService.showSuccess('Settings saved successfully');
@@ -352,7 +362,14 @@ export class SettingsUI {
             }
 
             // Save default settings
-            await this.storageService.saveSettings(DEFAULT_SETTINGS);
+            const response = await this.messageService.sendMessage({
+                action: 'saveSettings',
+                settings: DEFAULT_SETTINGS
+            });
+
+            if (!response.success) {
+                throw new Error(response.error || 'Failed to reset settings');
+            }
 
             // Update reference
             this.settings = DEFAULT_SETTINGS;

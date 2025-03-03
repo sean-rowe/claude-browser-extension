@@ -3,8 +3,8 @@ import { LoggerService } from '../../shared/services/loggerService';
 /**
  * Service for managing Monaco editor instances
  */
-export class MonacoEditorService {
-    private static instance: MonacoEditorService;
+export class MonacoService {
+    private static instance: MonacoService;
     private readonly logger = LoggerService.getInstance();
     private isMonacoLoaded = false;
     private loadPromise: Promise<void> | null = null;
@@ -20,13 +20,13 @@ export class MonacoEditorService {
     }
 
     /**
-     * Get the singleton instance of the Monaco editor service
+     * Get the singleton instance of the Monaco service
      */
-    public static getInstance(): MonacoEditorService {
-        if (!MonacoEditorService.instance) {
-            MonacoEditorService.instance = new MonacoEditorService();
+    public static getInstance(): MonacoService {
+        if (!MonacoService.instance) {
+            MonacoService.instance = new MonacoService();
         }
-        return MonacoEditorService.instance;
+        return MonacoService.instance;
     }
 
     /**
@@ -49,7 +49,7 @@ export class MonacoEditorService {
      * Load Monaco editor from CDN
      */
     private async loadMonaco(): Promise<void> {
-        this.logger.debug('MonacoEditorService: Loading Monaco editor from CDN');
+        this.logger.debug('MonacoService: Loading Monaco editor from CDN');
 
         try {
             // Add Monaco loader script
@@ -67,7 +67,7 @@ export class MonacoEditorService {
                 try {
                     (window as any).require(['vs/editor/editor.main'], () => {
                         this.isMonacoLoaded = true;
-                        this.logger.info('MonacoEditorService: Monaco editor loaded successfully');
+                        this.logger.info('MonacoService: Monaco editor loaded successfully');
                         resolve();
                     });
                 } catch (error) {
@@ -75,7 +75,7 @@ export class MonacoEditorService {
                 }
             });
         } catch (error) {
-            this.logger.error('MonacoEditorService: Failed to load Monaco editor', error);
+            this.logger.error('MonacoService: Failed to load Monaco editor', error);
             this.loadPromise = null;
             throw error;
         }
@@ -131,7 +131,7 @@ export class MonacoEditorService {
         if (!this.isMonacoLoaded) return;
 
         monaco.editor.setTheme(theme);
-        this.logger.debug(`MonacoEditorService: Set theme to ${theme}`);
+        this.logger.debug(`MonacoService: Set theme to ${theme}`);
     }
 
     /**
@@ -142,7 +142,7 @@ export class MonacoEditorService {
 
         editor.dispose();
         this.editors = this.editors.filter(e => e !== editor);
-        this.logger.debug('MonacoEditorService: Editor disposed');
+        this.logger.debug('MonacoService: Editor disposed');
     }
 
     /**
@@ -151,7 +151,7 @@ export class MonacoEditorService {
     public disposeAllEditors(): void {
         this.editors.forEach(editor => editor.dispose());
         this.editors = [];
-        this.logger.info('MonacoEditorService: All editors disposed');
+        this.logger.info('MonacoService: All editors disposed');
     }
 
     /**
@@ -162,6 +162,13 @@ export class MonacoEditorService {
 
         monaco.languages.register({ id: languageId });
         monaco.languages.setMonarchTokensProvider(languageId, configuration);
-        this.logger.debug(`MonacoEditorService: Registered custom language ${languageId}`);
+        this.logger.debug(`MonacoService: Registered custom language ${languageId}`);
+    }
+}
+
+// Add ambient declaration for Monaco types
+declare global {
+    interface Window {
+        monaco: typeof monaco;
     }
 }

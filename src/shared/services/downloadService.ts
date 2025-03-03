@@ -52,7 +52,7 @@ export class DownloadService {
             // Trigger download
             await this.downloadFile(url, filename);
 
-            // Clean up
+            // Clean up the URL after a minute
             setTimeout(() => URL.revokeObjectURL(url), 60000);
 
             return filename;
@@ -78,7 +78,7 @@ export class DownloadService {
             // Trigger download
             await this.downloadFile(url, file.filename);
 
-            // Clean up
+            // Clean up the URL after a minute
             setTimeout(() => URL.revokeObjectURL(url), 60000);
 
             return file.filename;
