@@ -8,7 +8,6 @@ export class ApiService {
     private static instance: ApiService;
     private readonly logger = LoggerService.getInstance();
     private readonly storageService = StorageService.getInstance();
-    private apiKey: string = '';
 
     private constructor() {
         // Private constructor for singleton
@@ -29,10 +28,6 @@ export class ApiService {
      */
     public async init(): Promise<void> {
         try {
-            // Load settings
-            const settings = await this.storageService.getSettings();
-            this.apiKey = settings.apiSettings.apiKey;
-
             this.logger.debug('ApiService: Initialized');
         } catch (error) {
             this.logger.error('ApiService: Initialization error', error);
@@ -41,15 +36,21 @@ export class ApiService {
 
     /**
      * Send a prompt to Claude API
+     * @param prompt The user prompt to send
+     * @param options Additional API options
      */
-    public async sendPrompt(prompt: string, options?: any): Promise<any> {
+    public async sendPrompt(prompt: string, options: any = {}): Promise<any> {
         try {
             // Load settings to get the latest API key
             const settings = await this.storageService.getSettings();
             const apiKey = settings.apiSettings.apiKey;
 
             if (!apiKey) {
-                throw new Error('API key not configured');
+                this.logger.error('ApiService: API key not configured');
+                return {
+                    error: true,
+                    message: 'API key not configured'
+                };
             }
 
             // Prepare request options
@@ -69,7 +70,8 @@ export class ApiService {
                             role: 'user',
                             content: prompt
                         }
-                    ]
+                    ],
+                    ...options
                 })
             };
 
@@ -78,36 +80,146 @@ export class ApiService {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`API error (${response.status}): ${errorText}`);
+                this.logger.error(`ApiService: API error (${response.status}): ${errorText}`);
+                return {
+                    error: true,
+                    status: response.status,
+                    message: errorText
+                };
             }
 
-            const data = await response.json();
-            return data;
+            return await response.json();
         } catch (error) {
             this.logger.error('ApiService: Error sending prompt', error);
-            throw error;
+            return {
+                error: true,
+                message: error instanceof Error ? error.message : 'Unknown error'
+            };
+        }
+    }
+
+    /**
+     * Continue a conversation with the Claude API
+     * @param conversationHistory Previous messages in the conversation
+     * @param prompt New user prompt to send
+     * @param options Additional API options
+     */
+    public async continueConversation(
+        conversationHistory: any[],
+        prompt: string,
+        options: any = {}
+    ): Promise<any> {
+        try {
+            // Load settings
+            const settings = await this.storageService.getSettings();
+            const apiKey = settings.apiSettings.apiKey;
+
+            if (!apiKey) {
+                this.logger.error('ApiService: API key not configured');
+                return {
+                    error: true,
+                    message: 'API key not configured'
+                };
+            }
+
+            if (!settings.apiSettings.enableApiContinuation) {
+                this.logger.error('ApiService: API continuation is disabled in settings');
+                return {
+                    error: true,
+                    message: 'API continuation is disabled in settings'
+                };
+            }
+
+            // Prepare messages from conversation history
+            const messages = [
+                ...conversationHistory,
+                {
+                    role: 'user',
+                    content: prompt
+                }
+            ];
+
+            // Prepare request options
+            const requestOptions = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01'
+                },
+                body: JSON.stringify({
+                    model: settings.apiSettings.modelName,
+                    max_tokens: settings.apiSettings.maxTokens,
+                    temperature: settings.apiSettings.temperature,
+                    messages,
+                    ...options
+                })
+            };
+
+            // Make API request
+            const response = await fetch(settings.apiSettings.apiEndpoint, requestOptions);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                this.logger.error(`ApiService: API error (${response.status}): ${errorText}`);
+                return {
+                    error: true,
+                    status: response.status,
+                    message: errorText
+                };
+            }
+
+            return await response.json();
+        } catch (error) {
+            this.logger.error('ApiService: Error continuing conversation', error);
+            return {
+                error: true,
+                message: error instanceof Error ? error.message : 'Unknown error'
+            };
         }
     }
 
     /**
      * Compile code using remote service
+     * @param code Code to compile
+     * @param language Programming language of the code
      */
     public async compileCode(code: string, language: string): Promise<any> {
         try {
             // Load settings
             const settings = await this.storageService.getSettings();
-            const apiKey = settings.compilerSettings.compilationApiKey;
 
             if (!settings.compilerSettings.enableCompilation) {
-                throw new Error('Code compilation is disabled in settings');
+                this.logger.warn('ApiService: Code compilation is disabled in settings');
+                return {
+                    error: true,
+                    message: 'Code compilation is disabled in settings'
+                };
             }
 
             if (!settings.compilerSettings.useRemoteCompilation) {
-                throw new Error('Remote compilation is disabled in settings');
+                this.logger.warn('ApiService: Remote compilation is disabled in settings');
+                return {
+                    error: true,
+                    message: 'Remote compilation is disabled in settings'
+                };
             }
 
             if (!settings.compilerSettings.supportedLanguages.includes(language)) {
-                throw new Error(`Language not supported: ${language}`);
+                this.logger.warn(`ApiService: Language not supported: ${language}`);
+                return {
+                    error: true,
+                    message: `Language not supported: ${language}`
+                };
+            }
+
+            const apiKey = settings.compilerSettings.compilationApiKey;
+            if (!apiKey) {
+                this.logger.error('ApiService: Compilation API key not configured');
+                return {
+                    error: true,
+                    message: 'Compilation API key not configured'
+                };
             }
 
             // Prepare request options
@@ -129,7 +241,11 @@ export class ApiService {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`Compilation error (${response.status}): ${errorText}`);
+                this.logger.error(`ApiService: Compilation error (${response.status}): ${errorText}`);
+                return {
+                    error: true,
+                    message: `Compilation error: ${errorText}`
+                };
             }
 
             const data = await response.json();
