@@ -3,9 +3,15 @@ import { UiInjector } from './ui/uiInjector';
 import { BannerService } from './ui/bannerService';
 import { MessageService } from './events/messageService';
 import { StorageService } from '../shared/services/storageService';
+import { ArtifactUIHandler } from './editor/artifactUIHandler';
+import { EditorManager } from './editor/editorManager';
+import { CompilerService } from './editor/compilerService';
+import { SettingsUI } from './ui/settingsUI';
+import {ArtifactExtractor} from '@/shared/utils/artifactExtractor.ts';
 
 /**
  * Main entry point for the content script
+ * Responsible for initializing services and handling DOM interactions
  */
 class ContentScript {
     private readonly logger = LoggerService.getInstance();
@@ -13,6 +19,10 @@ class ContentScript {
     private readonly bannerService = BannerService.getInstance();
     private readonly messageService = MessageService.getInstance();
     private readonly storageService = StorageService.getInstance();
+    private readonly artifactUIHandler = ArtifactUIHandler.getInstance();
+    private readonly editorManager = EditorManager.getInstance();
+    private readonly compilerService = CompilerService.getInstance();
+    private readonly settingsUI = SettingsUI.getInstance();
 
     constructor() {
         this.init().catch(error => {
@@ -38,10 +48,11 @@ class ContentScript {
             // Register message handlers
             this.registerMessageHandlers();
 
-            // Initialize UI injector
+            // Initialize UI components
             await this.uiInjector.init();
+            this.artifactUIHandler.init();
 
-            // Notification on successful initialization
+            // Notification on successful initialization (if enabled)
             if (settings.uiSettings.showNotifications) {
                 this.bannerService.showSuccess('Claude Artifacts helper initialized', 2000);
             }
@@ -49,6 +60,7 @@ class ContentScript {
             this.logger.info('ContentScript: Initialization complete');
         } catch (error) {
             this.logger.error('ContentScript: Initialization failed', error);
+            this.bannerService.showError('Failed to initialize extension');
         }
     }
 
@@ -58,7 +70,7 @@ class ContentScript {
     private registerMessageHandlers(): void {
         // Handler for showing settings UI
         this.messageService.registerHandler('showSettings', async () => {
-            this.bannerService.showInfo('Settings panel coming soon');
+            await this.settingsUI.show();
             return true;
         });
 
@@ -84,6 +96,42 @@ class ContentScript {
             }
 
             return true;
+        });
+
+        // Handler for downloading all artifacts
+        this.messageService.registerHandler('downloadAllArtifacts', async (message) => {
+            try {
+                const options = message.options || {};
+
+                // Extract artifacts from the DOM
+                const artifacts = ArtifactExtractor.extractArtifactsFromDOM();
+
+                if (artifacts.length === 0) {
+                    this.bannerService.showInfo('No artifacts found in this conversation');
+                    return { count: 0 };
+                }
+
+                // Send to background script for download
+                const result = await this.messageService.sendMessage({
+                    action: 'downloadArtifacts',
+                    artifacts: artifacts.map(a => a.toObject()),
+                    options: {
+                        stitchArtifacts: options.stitchArtifacts || false,
+                        flatStructure: options.flatStructure || false
+                    }
+                });
+
+                if (result.success) {
+                    this.bannerService.showSuccess(`${result.data.count} artifacts downloaded successfully`);
+                    return { count: result.data.count };
+                } else {
+                    throw new Error(result.error || 'Failed to download artifacts');
+                }
+            } catch (error) {
+                this.logger.error('ContentScript: Download artifacts error', error);
+                this.bannerService.showError('Failed to download artifacts');
+                return { count: 0, error: error instanceof Error ? error.message : 'Unknown error' };
+            }
         });
     }
 }

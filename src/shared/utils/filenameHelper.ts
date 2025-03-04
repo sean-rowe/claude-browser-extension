@@ -1,204 +1,190 @@
-import {Artifact, ArtifactState, ArtifactType} from '../models/artifact';
+import {Artifact, ArtifactType} from '../models/artifact';
 import {LoggerService} from '../services/loggerService';
 
 /**
- * Utility class for extracting artifacts from Claude responses
+ * Utility class for generating filenames for artifacts
  */
-export class ArtifactExtractor {
+export class FilenameHelper {
     private static readonly logger = LoggerService.getInstance();
+    private static readonly MAX_FILENAME_LENGTH = 255;
+    private static readonly INVALID_CHARS_REGEX = /[<>:"/\\|?*\x00-\x1F]/g;
+    private static readonly EXTENSION_MAP: Record<ArtifactType, string> = {
+        [ArtifactType.CODE]: 'txt', // Will be overridden based on language
+        [ArtifactType.SVG]: 'svg',
+        [ArtifactType.MARKDOWN]: 'md',
+        [ArtifactType.MERMAID]: 'mmd',
+        [ArtifactType.HTML]: 'html',
+        [ArtifactType.REACT]: 'jsx',
+        [ArtifactType.UNKNOWN]: 'txt'
+    };
+
+    private static readonly LANGUAGE_EXTENSION_MAP: Record<string, string> = {
+        'javascript': 'js',
+        'typescript': 'ts',
+        'js': 'js',
+        'ts': 'ts',
+        'jsx': 'jsx',
+        'tsx': 'tsx',
+        'html': 'html',
+        'css': 'css',
+        'python': 'py',
+        'java': 'java',
+        'c': 'c',
+        'cpp': 'cpp',
+        'csharp': 'cs',
+        'go': 'go',
+        'rust': 'rs',
+        'ruby': 'rb',
+        'php': 'php',
+        'swift': 'swift',
+        'kotlin': 'kt',
+        'json': 'json',
+        'xml': 'xml',
+        'yaml': 'yaml',
+        'markdown': 'md',
+        'sql': 'sql',
+        'shell': 'sh',
+        'bash': 'sh',
+        'powershell': 'ps1',
+        'dockerfile': 'dockerfile',
+        'plaintext': 'txt'
+    };
 
     /**
-     * Extract artifacts from the DOM
+     * Generate a filename for an artifact
      */
-    public static extractArtifactsFromDOM(containerSelector: string = '.conversation-container'): ArtifactState[] {
+    public static getFilename(
+        artifact: Artifact,
+        includeTimestamp: boolean = true,
+        sanitize: boolean = true,
+        maxLength: number = 255
+    ): string {
         try {
-            const container = document.querySelector(containerSelector);
-            if (!container) {
-                this.logger.warn(`ArtifactExtractor: Container not found with selector ${containerSelector}`);
-                return [];
+            // Start with the title
+            let filename = artifact.title || 'Untitled';
+
+            // Add timestamp if requested
+            if (includeTimestamp) {
+                const timestamp = artifact.timestamp instanceof Date
+                    ? artifact.timestamp
+                    : new Date(artifact.timestamp);
+
+                const formattedDate = timestamp
+                    .toISOString()
+                    .replace(/[:.]/g, '-')
+                    .slice(0, 19);
+
+                filename = `${filename}_${formattedDate}`;
             }
 
-            // Find all artifact containers
-            const artifactContainers = container.querySelectorAll('.antml-artifact-container');
-            if (!artifactContainers.length) {
-                this.logger.debug('ArtifactExtractor: No artifacts found');
-                return [];
+            // Sanitize if requested
+            if (sanitize) {
+                filename = this.sanitizeFilename(filename);
             }
 
-            const artifacts: ArtifactState[] = [];
+            // Get appropriate extension
+            const extension = this.getExtension(artifact);
 
-            // Process each artifact
-            artifactContainers.forEach((artifactContainer, index) => {
-                try {
-                    const artifact = this.extractArtifactFromContainer(artifactContainer as HTMLElement, index);
-                    if (artifact) {
-                        artifacts.push(artifact);
-                    }
-                } catch (error) {
-                    this.logger.error('ArtifactExtractor: Error extracting artifact', error);
-                }
-            });
+            // Ensure filename is not too long (accounting for extension)
+            const maxBaseLength = Math.min(maxLength, this.MAX_FILENAME_LENGTH) - extension.length - 1;
+            if (filename.length > maxBaseLength) {
+                filename = filename.substring(0, maxBaseLength);
+            }
 
-            this.logger.info(`ArtifactExtractor: Extracted ${artifacts.length} artifacts`);
-            return artifacts;
+            // Combine filename and extension
+            return `${filename}.${extension}`;
         } catch (error) {
-            this.logger.error('ArtifactExtractor: Error extracting artifacts from DOM', error);
-            return [];
+            this.logger.error('FilenameHelper: Error generating filename', error);
+
+            // Fallback to a generic name
+            return `artifact_${Date.now()}.txt`;
         }
     }
 
     /**
-     * Extract an artifact from a container element
+     * Generate a folder path for an artifact
      */
-    private static extractArtifactFromContainer(container: HTMLElement, index: number): ArtifactState | null {
+    public static getFolderPath(artifact: Artifact, basePath: string = ''): string {
         try {
-            // Extract title
-            const titleElement = container.querySelector('.antml-artifact-title');
-            const title = titleElement?.textContent?.trim() || `Artifact ${index + 1}`;
+            // Generate folder structure based on type and timestamp
+            const timestamp = artifact.timestamp instanceof Date
+                ? artifact.timestamp
+                : new Date(artifact.timestamp);
 
-            // Determine artifact type and content
-            const { type, content, language } = this.determineTypeAndContent(container);
+            const datePart = timestamp.toISOString().split('T')[0]; // YYYY-MM-DD
 
-            // Create artifact
-            const artifact: Artifact = {
-                id: `artifact-${Date.now()}-${index}`,
-                title,
-                type,
-                content,
-                language,
-                timestamp: new Date(),
-                // Can extract more metadata like message ID or conversation ID if needed
-            };
+            // Create path segments
+            const segments = [
+                basePath,
+                this.getTypeFolder(artifact.type),
+                datePart
+            ].filter(Boolean); // Remove empty segments
 
-            return new ArtifactState(artifact);
+            return segments.join('/');
         } catch (error) {
-            this.logger.error('ArtifactExtractor: Error extracting artifact from container', error);
-            return null;
+            this.logger.error('FilenameHelper: Error generating folder path', error);
+
+            // Fallback to a simple folder
+            return basePath ? basePath : 'artifacts';
         }
     }
 
     /**
-     * Determine the type and content of an artifact
+     * Sanitize a filename to remove invalid characters
      */
-    private static determineTypeAndContent(container: HTMLElement): { type: ArtifactType; content: string; language?: string } {
-        // Check if it's a code artifact
-        const codeElement = container.querySelector('pre code');
-        if (codeElement) {
-            // Determine language from class
-            const classes = Array.from(codeElement.classList);
-            const langClass = classes.find(cls => cls.startsWith('language-'));
-            const language = langClass ? langClass.replace('language-', '') : undefined;
+    private static sanitizeFilename(filename: string): string {
+        // Replace invalid characters with underscores
+        let sanitized = filename.replace(this.INVALID_CHARS_REGEX, '_');
 
-            return {
-                type: ArtifactType.CODE,
-                content: codeElement.textContent || '',
-                language
-            };
+        // Replace multiple spaces/underscores with a single underscore
+        sanitized = sanitized.replace(/[\\s_]+/g, '_');
+
+        // Trim leading/trailing spaces and underscores
+        sanitized = sanitized.trim().replace(/^_+|_+$/g, '');
+
+        // Ensure we have something
+        if (!sanitized) {
+            sanitized = 'artifact';
         }
 
-        // Check if it's an SVG
-        const svgElement = container.querySelector('svg');
-        if (svgElement) {
-            return {
-                type: ArtifactType.SVG,
-                content: svgElement.outerHTML
-            };
-        }
-
-        // Check if it's an HTML element
-        const htmlElement = container.querySelector('[data-type="html"]');
-        if (htmlElement) {
-            return {
-                type: ArtifactType.HTML,
-                content: htmlElement.innerHTML
-            };
-        }
-
-        // Check if it's a React component
-        const reactElement = container.querySelector('[data-type="react"]');
-        if (reactElement) {
-            return {
-                type: ArtifactType.REACT,
-                content: reactElement.textContent || ''
-            };
-        }
-
-        // Check if it's a Mermaid diagram
-        const mermaidElement = container.querySelector('.mermaid');
-        if (mermaidElement) {
-            return {
-                type: ArtifactType.MERMAID,
-                content: mermaidElement.textContent || ''
-            };
-        }
-
-        // Default to Markdown for other content
-        return {
-            type: ArtifactType.MARKDOWN,
-            content: container.innerHTML
-        };
+        return sanitized;
     }
 
     /**
-     * Stitch artifacts with the same type and title
-     * This is used to combine multiple code blocks that belong together
+     * Get the appropriate file extension for an artifact
      */
-    public static stitchArtifacts(artifacts: ArtifactState[]): ArtifactState[] {
-        if (artifacts.length <= 1) {
-            return artifacts;
-        }
-
-        // Group artifacts by title
-        const groupedByTitle: Record<string, ArtifactState[]> = {};
-
-        artifacts.forEach(artifact => {
-            const key = `${artifact.title}-${artifact.type}`;
-            if (!groupedByTitle[key]) {
-                groupedByTitle[key] = [];
+    private static getExtension(artifact: Artifact): string {
+        // For code artifacts, use language-specific extension if available
+        if (artifact.type === ArtifactType.CODE && artifact.language) {
+            const language = artifact.language.toLowerCase();
+            if (this.LANGUAGE_EXTENSION_MAP[language]) {
+                return this.LANGUAGE_EXTENSION_MAP[language];
             }
-            groupedByTitle[key].push(artifact);
-        });
+        }
 
-        // Combine artifacts in each group
-        const stitchedArtifacts: ArtifactState[] = [];
-
-        Object.values(groupedByTitle).forEach(group => {
-            if (group.length === 1) {
-                // If only one artifact in the group, keep it as is
-                stitchedArtifacts.push(group[0]);
-            } else {
-                // Sort by timestamp (oldest first)
-                group.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-
-                // Combine content (specific to artifact type)
-                const combined = this.combineArtifacts(group);
-                stitchedArtifacts.push(combined);
-            }
-        });
-
-        return stitchedArtifacts;
+        // Fall back to default extension for the artifact type
+        return this.EXTENSION_MAP[artifact.type] || 'txt';
     }
 
     /**
-     * Combine artifacts of the same type
+     * Get a folder name based on artifact type
      */
-    private static combineArtifacts(artifacts: ArtifactState[]): ArtifactState {
-        const firstArtifact = artifacts[0];
-
-        // If not code artifacts, just use the last one
-        if (firstArtifact.type !== ArtifactType.CODE) {
-            return artifacts[artifacts.length - 1];
+    private static getTypeFolder(type: ArtifactType): string {
+        switch (type) {
+            case ArtifactType.CODE:
+                return 'code';
+            case ArtifactType.SVG:
+                return 'images';
+            case ArtifactType.MARKDOWN:
+                return 'documents';
+            case ArtifactType.MERMAID:
+                return 'diagrams';
+            case ArtifactType.HTML:
+                return 'web';
+            case ArtifactType.REACT:
+                return 'components';
+            default:
+                return 'other';
         }
-
-        // For code artifacts, concatenate the content
-        const combinedContent = artifacts
-            .map(a => a.content)
-            .join('\n\n');
-
-        // Create a new artifact with the combined content
-        return firstArtifact.with({
-            content: combinedContent,
-            timestamp: new Date()
-        });
     }
 }

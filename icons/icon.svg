@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+    <!-- Background circle -->
+    <circle cx="256" cy="256" r="240" fill="#3b82f6" />
+
+    <!-- Document icon -->
+    <path d="M356 120H236c-8.8 0-16 7.2-16 16v40h-60c-8.8 0-16 7.2-16 16v184c0 8.8 7.2 16 16 16h180c8.8 0 16-7.2 16-16v-40h60c8.8 0 16-7.2 16-16V176c0-8.8-7.2-16-16-16h-32v-24c0-8.8-7.2-16-16-16zm-44 240H176V208h60v32c0 8.8 7.2 16 16 16h60v104zm44-120h-44v-40h-76v-64h120v104z" fill="white" />
+
+    <!-- Download arrow -->
+    <path d="M256 376L192 312h40v-72h48v72h40z" fill="white" />
+</svg>

@@ -1,13 +1,16 @@
-import {StorageService} from '@/background/storageService';
-import {LoggerService} from '@/shared/services/loggerService';
+import {StorageService} from '@/shared/services/storageService.ts';
+import {LoggerService} from '@/shared/services/loggerService.ts';
+import {ArtifactSettings, SettingsListener} from '@/shared/models/settings.ts';
 
+/**
+ * Manages settings for the extension
+ */
 export class SettingsManager {
     private static instance: SettingsManager;
     private readonly logger: LoggerService;
     private readonly storageService: StorageService;
-    private settings: ISettings = {
-        enabled: true
-    };
+    private settings: ArtifactSettings | null = null;
+    private listeners: Set<SettingsListener> = new Set();
 
     /**
      * Private constructor to enforce singleton pattern
@@ -39,23 +42,35 @@ export class SettingsManager {
      * Load settings from storage
      */
     private async loadSettings(): Promise<void> {
-        this.settings = await this.storageService.get<ISettings>('settings') || this.settings;
+        try {
+            const settingsState = await this.storageService.getSettings();
+            this.settings = settingsState.toObject();
+            this.notifyListeners();
+        } catch (error) {
+            this.logger.error('SettingsManager: Failed to load settings', error);
+            throw error;
+        }
     }
 
     /**
      * Save settings to storage
      */
     private async saveSettings(): Promise<void> {
-        await this.storageService.set<ISettings>('settings', this.settings);
+        if (!this.settings) return;
 
-        // Notify listeners of the updated settings
-        this.notifyListeners();
+        try {
+            await this.storageService.saveSettings(this.settings);
+            this.notifyListeners();
+        } catch (error) {
+            this.logger.error('SettingsManager: Failed to save settings', error);
+            throw error;
+        }
     }
 
     /**
      * Get the current settings
      */
-    public getSettings(): ISettings {
+    public getSettings(): ArtifactSettings | null {
         return this.settings;
     }
 
@@ -63,13 +78,10 @@ export class SettingsManager {
      * Update the settings
      * @param settings New settings
      */
-    public async updateSettings(settings: ISettings): Promise<void> {
+    public async updateSettings(settings: ArtifactSettings): Promise<void> {
         this.settings = settings;
         await this.saveSettings();
     }
-
-    // Listener functionality
-    private listeners: Set<SettingsListener> = new Set();
 
     /**
      * Add a listener for settings changes
@@ -91,9 +103,11 @@ export class SettingsManager {
      * Notify all listeners of settings changes
      */
     private notifyListeners(): void {
+        if (!this.settings) return;
+
         this.listeners.forEach(listener => {
             try {
-                listener(this.settings);
+                listener(this.settings!);
             } catch (error) {
                 this.logger.error('Error in settings listener:', error);
             }

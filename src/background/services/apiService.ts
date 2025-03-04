@@ -1,5 +1,5 @@
-import {LoggerService} from '../../shared/services/loggerService';
-import {StorageService} from '../../shared/services/storageService';
+import {LoggerService} from '@/shared/services/loggerService.ts';
+import {StorageService} from '@/shared/services/storageService.ts';
 
 /**
  * Service for interacting with external APIs

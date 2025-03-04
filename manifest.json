@@ -2,39 +2,44 @@
   "manifest_version": 3,
   "name": "Claude Artifacts Helper",
   "version": "1.0.0",
-  "description": "Enhances Claude AI with artifact downloading, editing and execution",
+  "description": "Download, edit, and run artifacts from Claude AI conversations",
   "permissions": [
     "storage",
-    "downloads"
+    "downloads",
+    "scripting"
   ],
   "host_permissions": [
     "https://claude.ai/*",
-    "https://*.anthropic.com/*"
+    "https://anthropic.com/*"
   ],
   "background": {
-    "service_worker": "dist/background/index.js",
+    "service_worker": "src/background/index.js",
     "type": "module"
   },
   "content_scripts": [
     {
-      "matches": ["https://claude.ai/*", "https://*.anthropic.com/*"],
-      "js": ["dist/content/index.js"],
-      "css": ["dist/content/styles/styles.css"]
+      "matches": ["https://claude.ai/*", "https://anthropic.com/*"],
+      "js": ["src/content/index.js"],
+      "css": ["src/content/styles/styles.css"]
     }
   ],
   "action": {
+    "default_title": "Claude Artifacts Helper",
     "default_icon": {
-      "16": "assets/icon16.png",
-      "32": "assets/icon32.png",
-      "48": "assets/icon48.png",
-      "128": "assets/icon128.png"
-    },
-    "default_title": "Claude Artifacts Helper"
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
   "icons": {
-    "16": "assets/icon16.png",
-    "32": "assets/icon32.png",
-    "48": "assets/icon48.png",
-    "128": "assets/icon128.png"
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "options_ui": {
+    "page": "src/options/index.html",
+    "open_in_tab": true
   }
 }

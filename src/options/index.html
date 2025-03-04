@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Artifacts Helper - Options</title>
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --primary-hover: #2563eb;
+            --text-color: #1e293b;
+            --background-color: #f8fafc;
+            --border-color: #e2e8f0;
+            --error-color: #ef4444;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --info-color: #3b82f6;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            color: var(--text-color);
+            background-color: var(--background-color);
+            line-height: 1.5;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.875rem;
+            color: var(--primary-color);
+        }
+
+        .description {
+            color: #64748b;
+        }
+
+        .settings-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+            color: var(--text-color);
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.25rem;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        input[type="checkbox"] {
+            margin-right: 0.5rem;
+        }
+
+        button {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.25rem;
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button.secondary {
+            background-color: #cbd5e1;
+            color: var(--text-color);
+        }
+
+        button.secondary:hover {
+            background-color: #94a3b8;
+        }
+
+        button.danger {
+            background-color: var(--error-color);
+        }
+
+        button.danger:hover {
+            background-color: #dc2626;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+            margin-top: 1rem;
+        }
+
+        .message {
+            padding: 0.75rem 1rem;
+            border-radius: 0.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .success {
+            background-color: #ecfdf5;
+            color: #065f46;
+            border-left: 4px solid var(--success-color);
+        }
+
+        .error {
+            background-color: #fef2f2;
+            color: #991b1b;
+            border-left: 4px solid var(--error-color);
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .checkbox-container input {
+            margin-right: 0.75rem;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            color: #64748b;
+            font-size: 0.875rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>Claude Artifacts Helper Settings</h1>
+        <p class="description">Configure how the extension behaves when interacting with Claude</p>
+    </header>
+
+    <div id="message-container" class="message hidden"></div>
+
+    <div class="settings-section">
+        <h2>Artifact Settings</h2>
+
+        <div class="checkbox-container">
+            <input type="checkbox" id="stitchArtifacts">
+            <label for="stitchArtifacts">Stitch related artifacts (combine code snippets)</label>
+        </div>
+
+        <div class="checkbox-container">
+            <input type="checkbox" id="flatFileStructure">
+            <label for="flatFileStructure">Use flat file structure (no folders)</label>
+        </div>
+
+        <div class="checkbox-container">
+            <input type="checkbox" id="includeTimestampInFilename">
+            <label for="includeTimestampInFilename">Include timestamp in filenames</label>
+        </div>
+
+        <div class="checkbox-container">
+            <input type="checkbox" id="replaceInvalidChars">
+            <label for="replaceInvalidChars">Replace invalid characters in filenames</label>
+        </div>
+
+        <div class="form-group">
+            <label for="maxFilenameLength">Maximum filename length</label>
+            <input type="number" id="maxFilenameLength" min="10" max="255">
+        </div>
+    </div>
+
+    <div class="settings-section">
+        <h2>Editor Settings</h2>
+
+        <div class="form-group">
+            <label for="editorTheme">Editor Theme</label>
+            <select id="editorTheme">
+                <option value="vs">Light</option>
+                <option value="vs-dark">Dark</option>
+                <option value="hc-black">High Contrast</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="fontSize">Font Size</label>
+            <input type="number" id="fontSize" min="10" max="24">
+        </div>
+
+        <div class="form-group">
+            <label for="tabSize">Tab Size</label>
+            <input type="number" id="tabSize" min="1" max="8">
+        </div>
+
+        <div class="checkbox-container">
+            <input type="checkbox" id="insertSpaces">
+            <label for="insertSpaces">Insert spaces instead of tabs</label>
+        </div>
+
+        <div class="checkbox-container">
+            <input type="checkbox" id="wordWrap">
+            <label for="wordWrap">Enable word wrap</label>
+        </div>
+
+        <div class="checkbox-container">
+            <input type="checkbox" id="lineNumbers">
+            <label for="lineNumbers">Show line numbers</label>
+        </div>
+
+        <div class="checkbox-container">
+            <input type="checkbox" id="minimap">
+            <label for="minimap">Show minimap</label>
+        </div>
+
+        <div class="checkbox-container">
+            <input type="checkbox" id="folding">
+            <label for="folding">Enable code folding</label>
+        </div>
+    </div>
+
+    <div class="settings-section">
+        <h2>API Settings</h2>
+
+        <div class="checkbox-container">
+            <input type="checkbox" id="enableApiContinuation">
+            <label for="enableApiContinuation">Enable API continuation when rate limited</label>
+        </div>
+
+        <div class="form-group">
+            <label for="apiKey">Claude API Key</label>
+            <input type="password" id="apiKey" placeholder="sk-...">
+            <small>Your API key is stored locally and never sent to our servers</small>
+        </div>
+
+        <div class="form-group">
+            <label for="apiEndpoint">API Endpoint</label>
+            <input type="text" id="apiEndpoint">
+        </div>
+
+        <div class="form-group">
+            <label for="modelName">Model Name</label>
+            <select id="modelName">
+                <option value="claude-3-haiku-20240307">Claude 3 Haiku</option>
+                <option value="claude-3-sonnet-20240229">Claude 3 Sonnet</option>
+                <option value="claude-3-opus-20240229">Claude 3 Opus</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="maxTokens">Max Tokens</label>
+            <input type="number" id="maxTokens" min="1" max="100000">
+        </div>
+
+        <div class="form-group">
+            <label for="temperature">Temperature</label>
+            <input type="number" id="temperature" min="0" max="1" step="0.1">
+        </div>
+    </div>
+
+    <div class="settings-section">
+        <h2>UI Settings</h2>
+
+        <div class="checkbox-container">
+            <input type="checkbox" id="showNotifications">
+            <label for="showNotifications">Show notifications</label>
+        </div>
+
+        <div class="form-group">
+            <label for="notificationDurationMs">Notification Duration (ms)</label>
+            <input type="number" id="notificationDurationMs" min="1000" max="10000" step="500">
+        </div>
+
+        <div class="checkbox-container">
+            <input type="checkbox" id="darkMode">
+            <label for="darkMode">Dark Mode</label>
+        </div>
+    </div>
+
+    <div class="button-group">
+        <button id="resetBtn" class="danger">Reset to Defaults</button>
+        <button id="saveBtn">Save Settings</button>
+    </div>
+
+    <footer>
+        <p>Claude Artifacts Helper v1.0.0 | <a href="https://github.com/sean-rowe/claude-artifacts-helper" target="_blank">GitHub</a></p>
+    </footer>
+</div>
+
+<script src="index.js" type="module"></script>
+</body>
+</html>
