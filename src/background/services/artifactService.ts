@@ -1,7 +1,7 @@
-import {Artifact, ArtifactFile} from '../../shared/models/artifact';
-import {LoggerService} from '../../shared/services/loggerService';
-import {StorageService} from '../../shared/services/storageService';
-import {FilenameHelper} from '../../shared/utils/filenameHelper';
+import {Artifact, ArtifactFile} from '@/shared/models/artifact.ts';
+import {LoggerService} from '@/shared/services/loggerService.ts';
+import {StorageService} from '@/shared/services/storageService.ts';
+import {FilenameHelper} from '@/shared/utils/filenameHelper.ts';
 
 /**
  * Service for managing artifacts
